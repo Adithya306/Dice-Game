@@ -423,3 +423,166 @@ fun GameScreen(
         )
     }
 }
+
+@Composable
+fun DiceImage(value:Int){
+    val imageRes = when (value){
+        1-> R.drawable.dado1
+        2-> R.drawable.dado2
+        3-> R.drawable.dado3
+        4-> R.drawable.dado4
+        5-> R.drawable.dado5
+        6-> R.drawable.dado6
+        else -> R.drawable.dado1
+    }
+
+    Image(
+        painter = painterResource(id = imageRes),
+        contentDescription = "Dice showing $value",
+        modifier = Modifier.size(60.dp)
+    )
+}
+
+
+private fun computerDecideReroll(
+    currentDice: List<Int>,
+    computerScore: Int,
+    humanScore: Int,
+    targetScore: Int,
+    rollCount: Int
+): Boolean {
+    val currentSum = currentDice.sum()
+
+    // Strategy 7: Winning Move Recognition - If this roll would win the game, take it
+    if (currentSum + computerScore >= targetScore) return false
+
+    // Strategy 2: Save Great Rolls - Don't risk it if we already have a great roll
+    if (currentSum >= 21) return false  // 21+ is better than average (17.5)
+
+    // Strategy 6: Last Roll Caution - Be more conservative on the final roll
+    if (rollCount == 2) {
+        return currentSum < 18  // Only reroll if below average on last roll
+    }
+
+    // Strategy 5: Final Push Strategy - Calculate risks when close to target
+    val remainingToTarget = targetScore - computerScore
+    if (remainingToTarget <= 25) {
+        // If human is very close to winning, take more risks
+        if (targetScore - humanScore <= 15) return true
+    }
+
+    // Strategy 3: Chase When Behind - Take more risks when behind
+    if (computerScore < humanScore - 15) {
+        return currentSum < 20  // Reroll unless we have a good score
+    }
+
+    // Strategy 4: Play Safe When Ahead - Be more conservative when leading
+    if (computerScore > humanScore + 15) {
+        return currentSum < 16  // Only reroll poor rolls when ahead
+    }
+
+    // Default case - reroll if below average
+    return currentSum < 18
+}
+
+private fun computerSelectDiceToKeep(
+    currentDice: List<Int>,
+    computerScore: Int,
+    humanScore: Int,
+    targetScore: Int
+): List<Boolean> {
+    val keepDice = MutableList(5) { false }
+
+    // Strategy 1: Keep High Value Dice - Always keep 5s and 6s
+    for (i in currentDice.indices) {
+        if (currentDice[i] >= 5) {
+            keepDice[i] = true
+        }
+    }
+
+    // Strategy 3: Chase When Behind - Take more risks when behind
+    val isBehind = computerScore < humanScore - 15
+    if (isBehind) {
+        // Only keep 6s when far behind to maximize reroll potential
+        for (i in currentDice.indices) {
+            if (currentDice[i] < 6) {
+                keepDice[i] = false
+            }
+        }
+    }
+
+    // Strategy 4: Play Safe When Ahead - Keep more dice when leading
+    val isAhead = computerScore > humanScore + 15
+    if (isAhead) {
+        // Keep 4s, 5s, and 6s when ahead
+        for (i in currentDice.indices) {
+            if (currentDice[i] >= 4) {
+                keepDice[i] = true
+            }
+        }
+    }
+
+    // Strategy 5: Final Push Strategy - Calculated risks when close to winning
+    val remainingToTarget = targetScore - computerScore
+    if (remainingToTarget <= 25) {
+        // Keep 3s, 4s, 5s, and 6s when close to target
+        for (i in currentDice.indices) {
+            if (currentDice[i] >= 3) {
+                keepDice[i] = true
+            }
+        }
+    }
+
+    // Always keep at least one die unless all dice are very poor
+    if (keepDice.none { it } && currentDice.any { it >= 3 }) {
+        val maxValue = currentDice.maxOrNull() ?: 1
+        for (i in currentDice.indices) {
+            if (currentDice[i] == maxValue) {
+                keepDice[i] = true
+                break
+            }
+        }
+    }
+
+    return keepDice
+}
+
+private fun completeComputerTurn(
+    currentDice: List<Int>,
+    currentRollCount: Int,
+    computerScore: Int,
+    humanScore: Int,
+    targetScore: Int
+): List<Int> {
+    var dice = currentDice.toMutableList()
+    var rollCount = currentRollCount
+
+    while (rollCount < 3) {
+        val shouldReroll = computerDecideReroll(
+            dice,
+            computerScore,
+            humanScore,
+            targetScore,
+            rollCount
+        )
+
+        if (!shouldReroll) break
+
+        val keepDice = computerSelectDiceToKeep(
+            dice,
+            computerScore,
+            humanScore,
+            targetScore
+        )
+
+        for (i in dice.indices) {
+            if (!keepDice[i]) {
+                dice[i] = Random.nextInt(1, 7)
+            }
+        }
+
+        rollCount++
+    }
+
+    return dice
+}
