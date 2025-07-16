@@ -1,5 +1,6 @@
 package com.example.dicegame
 
+import android.app.AlertDialog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -26,6 +27,31 @@ class MainActivity : ComponentActivity() {
                     )
                 }
             }
+        }
+    }
+
+    private fun startGameWithTarget(targetScore: Int){
+        val intent = Intent(this, GameActivity::class.java).apply {
+            putExtra("TARGET_SCORE", targetScore)
+        }
+        startActivity(intent)
+    }
+
+    private fun showAboutDialog(){
+        val context = this
+        val dialogBuilder = AlertDialog.Builder(context)
+
+        dialogBuilder.apply {
+            setTitle("About")
+            setMessage("Student ID: w2053188/20230900\n" +
+                    "Student Name: Garuka Adithya \n\n" +
+                    "I confirm that I understand what plagiarism is and have read and\n" +
+                    "understood the section on Assessment Offences in the Essential\n" +
+                    "Information for Students. The work that I have submitted is\n" +
+                    "entirely my own. Any work from other authors is duly referenced\n" +
+                    "and acknowledged.")
+            setPositiveButton("OK"){dialog,_->dialog.dismiss()}
+            create().show()
         }
     }
 }
