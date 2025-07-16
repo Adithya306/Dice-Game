@@ -186,4 +186,240 @@ fun GameScreen(
                 Text("Roll for Tie Breaker")
             }
         }
+    } else {
+        Column(modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 16.dp),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+
+                Text(
+                    text = "H:${com.example.dicegamecw1.GameActivity.humanWinCount}/C:${com.example.dicegamecw1.GameActivity.computerWinCount}",
+                    style = MaterialTheme.typography.titleMedium
+                )
+
+
+                Text(
+                    text = "Score: You $humanScore - Computer $computerScore",
+                    style = MaterialTheme.typography.titleMedium
+                )
+            }
+
+            Text(
+                text = "Your Dice(tap to select for keeping)",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                for (i in humanDice.indices){
+                    val isSelected = selectedDice[i]
+
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .padding(4.dp)
+                            .clickable(enabled = rollCount>0 && rollCount<3 && !turnEnded && !gameOver) {
+                                val newSelection = selectedDice.toMutableList()
+                                newSelection[i] = !isSelected
+                                selectedDice = newSelection
+                            }
+                    ) {
+                        DiceImage(humanDice[i])
+
+                        if(isSelected){
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .border(2.dp, Color.Green, shape= RoundedCornerShape(4.dp))
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "Computer's Dice",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                computerDice.forEach { value -> DiceImage(value) }
+            }
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Button(
+                    onClick = {
+                        if(rollCount==0) {
+                            humanDice = List(5) { Random.nextInt(1, 7) }
+                            computerDice = List(5) { Random.nextInt(1, 7) }
+                            selectedDice = List(5) {false}
+
+                            computerRollCount=1
+
+                        } else {
+                            val newDice = humanDice.toMutableList()
+                            for (i in newDice.indices){
+                                if(!selectedDice[i]){
+                                    newDice[i]=Random.nextInt(1,7)
+                                }
+                            }
+                            humanDice=newDice
+
+                            if (computerRollCount<3 && computerDecideReroll(computerDice, computerScore, humanScore, targetScore, computerRollCount)){
+                                val keepDice = computerSelectDiceToKeep(computerDice, computerScore, humanScore, targetScore)
+                                val newComputerDice = computerDice.toMutableList()
+
+                                for(i in newComputerDice.indices){
+                                    if(!keepDice[i]){
+                                        newComputerDice[i] = Random.nextInt(1,7)
+                                    }
+                                }
+
+                                computerDice = newComputerDice
+                                computerRollCount++
+                            }
+                        }
+                        rollCount++
+
+                        if (rollCount==3){
+                            val humanTurnScore = humanDice.sum()
+                            humanScore += humanTurnScore
+
+                            val computerFinalDice = completeComputerTurn(computerDice, computerRollCount, computerScore, humanScore, targetScore)
+                            computerDice = computerFinalDice
+                            val computerTurnScore = computerDice.sum()
+                            computerScore+=computerTurnScore
+
+                            turnEnded=true
+
+                            humanAttempts++
+                            computerAttempts++
+
+                            if (humanScore >= targetScore || computerScore >= targetScore) {
+                                if (humanScore >= targetScore && computerScore >= targetScore &&
+                                    humanScore == computerScore && humanAttempts == computerAttempts) {
+                                    inTieBreaker = true
+                                } else {
+                                    gameOver = true
+                                    humanWins = when {
+                                        humanScore >= targetScore && computerScore >= targetScore -> humanScore > computerScore
+                                        humanScore >= targetScore -> true
+                                        else -> false
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    enabled = !turnEnded && !gameOver && !inTieBreaker && rollCount<3
+                )
+                {
+                    Text(if(rollCount ==0)"Throw" else "Reroll")
+                }
+                Button(
+                    onClick = {
+                        val humanTurnScore = humanDice.sum()
+                        humanScore += humanTurnScore
+
+                        val computerFinalDice = completeComputerTurn(computerDice, computerRollCount, computerScore, humanScore, targetScore)
+                        computerDice = computerFinalDice
+                        val computerTurnScore = computerFinalDice.sum()
+                        computerScore += computerTurnScore
+
+                        turnEnded=true
+
+                        humanAttempts++
+                        computerAttempts++
+
+                        if (humanScore >= targetScore || computerScore >= targetScore) {
+                            if (humanScore >= targetScore && computerScore >= targetScore &&
+                                humanScore == computerScore && humanAttempts == computerAttempts) {
+                                inTieBreaker = true
+                            } else {
+                                gameOver = true
+                                humanWins = when {
+                                    humanScore >= targetScore && computerScore >= targetScore -> humanScore > computerScore
+                                    humanScore >= targetScore -> true
+                                    else -> false
+                                }
+                            }
+                        }
+                    },
+                    enabled = !turnEnded && !gameOver && !inTieBreaker && rollCount>0
+                ) {
+                    Text("Score")
+                }
+            }
+
+            if(turnEnded && !gameOver && !inTieBreaker){
+                Button(
+                    onClick = {
+                        rollCount=0
+                        computerRollCount=0
+                        turnEnded=false
+                        selectedDice=List(5){false}
+                    },
+                    modifier = Modifier.padding(top=16.dp)
+                ) {
+                    Text("Next Turn")
+                }
+            }
+        }
     }
+
+    if (gameOver) {
+        AlertDialog(
+            onDismissRequest = {  },
+            title = { Text(text = if (humanWins) "You win!" else "You lose") },
+            text = {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        "Final score: You $humanScore - Computer $computerScore",
+                        color = if (humanWins) Color.Green else Color.Red
+                    )
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        "Total wins: You ${com.example.dicegamecw1.GameActivity.humanWinCount} - Computer ${com.example.dicegamecw1.GameActivity.computerWinCount}",
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Text("Thanks for playing!")
+                }
+            },
+            confirmButton = {
+                Button(onClick = { onReturnToMainMenu() }) {
+                    Text("Back to Main Menu")
+                }
+            },
+            containerColor = MaterialTheme.colorScheme.surface
+        )
+    }
+}
