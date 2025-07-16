@@ -79,3 +79,111 @@ class GameActivity : ComponentActivity() {
         }
     }
 }
+
+@Composable
+fun GameScreen(
+    targetScore: Int = 101,
+    onReturnToMainMenu: () -> Unit = {}
+){
+    var humanDice by rememberSaveable { mutableStateOf(listOf(1,1,1,1,1)) }
+    var computerDice by rememberSaveable { mutableStateOf(listOf(1,1,1,1,1)) }
+    var humanScore by rememberSaveable { mutableStateOf(0) }
+    var computerScore by rememberSaveable { mutableStateOf(0) }
+    var rollCount by rememberSaveable { mutableStateOf(0) }
+    var turnEnded by rememberSaveable { mutableStateOf(false) }
+    var computerRollCount by rememberSaveable { mutableStateOf(0) }
+    var selectedDice by rememberSaveable { mutableStateOf(listOf(false,false,false,false,false)) }
+    var gameOver by rememberSaveable { mutableStateOf(false) }
+    var humanWins by rememberSaveable { mutableStateOf(false) }
+    var humanAttempts by rememberSaveable { mutableStateOf(0) }
+    var computerAttempts by rememberSaveable { mutableStateOf(0) }
+    var inTieBreaker by rememberSaveable { mutableStateOf(false) }
+    var tieBreakerHumanDice by rememberSaveable { mutableStateOf(listOf(1, 1, 1, 1, 1)) }
+    var tieBreakerComputerDice by rememberSaveable { mutableStateOf(listOf(1, 1, 1, 1, 1)) }
+
+
+    LaunchedEffect(humanScore, computerScore) {
+        if (humanScore >= targetScore && computerScore >= targetScore) {
+            // Check if they have the same number of attempts and same score
+            if (humanAttempts == computerAttempts && humanScore == computerScore) {
+                inTieBreaker = true
+            } else {
+                gameOver = true
+                humanWins = humanScore > computerScore
+            }
+        } else if (humanScore >= targetScore) {
+            gameOver = true
+            humanWins = true
+        } else if (computerScore >= targetScore) {
+            gameOver = true
+            humanWins = false
+        }
+    }
+
+
+    LaunchedEffect(gameOver) {
+        if (gameOver) {
+            if (humanWins) {
+                com.example.dicegamecw1.GameActivity.humanWinCount++
+            } else {
+                com.example.dicegamecw1.GameActivity.computerWinCount++
+            }
+        }
+    }
+
+    if (inTieBreaker) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                "Tie Breaker! Roll the dice once to determine the winner.",
+                style = MaterialTheme.typography.titleMedium,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            Text("Your Dice")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                tieBreakerHumanDice.forEach { value -> DiceImage(value) }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text("Computer's Dice")
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                tieBreakerComputerDice.forEach { value -> DiceImage(value) }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Button(
+                onClick = {
+
+                    tieBreakerHumanDice = List(5) { Random.nextInt(1, 7) }
+                    tieBreakerComputerDice = List(5) { Random.nextInt(1, 7) }
+
+
+                    val humanSum = tieBreakerHumanDice.sum()
+                    val computerSum = tieBreakerComputerDice.sum()
+
+                    if (humanSum != computerSum) {
+                        inTieBreaker = false
+                        gameOver = true
+                        humanWins = humanSum > computerSum
+                    }
+
+                }
+            ) {
+                Text("Roll for Tie Breaker")
+            }
+        }
+    }
